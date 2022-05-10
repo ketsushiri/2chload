@@ -8,7 +8,7 @@ $ ./2chload b/23232323 math/123123 pr/123321
 
 ## Собрать
 ```bash
-$ git clone https://github.com/neuroliptica/2chload.git
+$ git clone https://github.com/ketsushiri/2chload.git
 $ cd 2chload
 $ go build -o 2chload main.go
 ```
