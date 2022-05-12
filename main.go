@@ -12,10 +12,6 @@ import (
     "log"
 )
 
-const (
-    BUFSIZE = 2048
-)
-
 type Unit struct {
     board, thread string
 }
@@ -128,6 +124,7 @@ const (
     pics    = "pics"
     vids    = "vids"
     help    = "Usage: 2chload [board/thread]\n\te.g: 2chload b/23242553 pr/543323 math/235114"
+    BUFSIZE = 2048
 )
 
 func getApiResponse(board string, thread string) *Api {
