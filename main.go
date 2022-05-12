@@ -12,6 +12,10 @@ import (
     "log"
 )
 
+const (
+    BUFSIZE = 2048
+)
+
 type Unit struct {
     board, thread string
 }
@@ -226,7 +230,7 @@ func main() {
     }
     log.Println("всего будет скачано:", len(files))
     start := time.Now()
-    ch := make(chan string)
+    ch := make(chan string, BUFSIZE)
     for _, file := range files {
         go download(file, ch)
     }

@@ -5,6 +5,7 @@
 *.so
 *.dylib
 2chload
+main
 
 # Test binary, built with `go test -c`
 *.test
