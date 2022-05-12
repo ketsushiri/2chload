@@ -9,7 +9,16 @@ import (
     "os"
     "strings"
     "time"
+    "log"
 )
+
+type Unit struct {
+    board, thread string
+}
+
+func (u Unit) String() string {
+    return u.board + "/" + u.thread
+}
 
 type File struct {
     Displayname string
@@ -114,9 +123,8 @@ const (
     bitmask = 0750
     pics    = "pics"
     vids    = "vids"
+    help    = "Usage: 2chload [board/thread]\n\te.g: 2chload b/23242553 pr/543323 math/235114"
 )
-
-var counter int32 // Im retarded a little bit.
 
 func createDir(name, subdir string) (path string, err error) {
     path = fmt.Sprintf("%s/%s", name, subdir)
@@ -127,82 +135,103 @@ func createDir(name, subdir string) (path string, err error) {
     return path, nil
 }
 
-func saveContent(thread string, response *Api, ch chan<- string) error {
-    start := time.Now()
-    picsPath, err := createDir(thread, pics)
-    if err != nil {
-        return err
-    }
-    vidsPath, err := createDir(thread, vids)
-    if err != nil {
-        return err
-    }
-    for _, post := range response.Threads[0].Posts {
-        for _, file := range post.Files {
-            path := baseUrl + file.Path
-            var finalPath string
-            if strings.HasSuffix(file.Name, ".webm") || strings.HasSuffix(file.Name, ".mp4") {
-                finalPath = vidsPath
-            } else {
-                finalPath = picsPath
-            }
-            filename := finalPath + "/" + file.Name
-            content, err := http.Get(path)
-            if err != nil {
-                return err
-            }
-            data, err := os.Create(filename)
-            if err != nil {
-                return err
-            }
-            size, err := io.Copy(data, content.Body)
-            content.Body.Close()
-            data.Close()
-
-            secs := time.Since(start).Seconds()
-            ch <- fmt.Sprintf("%.2fs %7d\t%s/%s/%s\n", secs, size, response.Board, thread, file.Name)
-        }
-    }
-    return nil
-}
-
-func fetchContent(board, thread string, ch chan<- string) {
+func getApiResponse(board string, thread string) *Api {
     var response Api
-    apiUrl := baseUrl + board + "/res/" + thread + ".json"
-    defer func() { counter++ }()
+    url := baseUrl + board + "/res/" + thread + ".json"
 
-    resp, err := http.Get(apiUrl)
-    if err != nil || resp.StatusCode != 200 {
-        ch <- fmt.Sprintf("Request to the 2ch's api has failed.\n")
-        return
+    resp, err := http.Get(url)
+    if err != nil {
+        log.Println(board, thread, err)
+        return nil
     }
     defer resp.Body.Close()
     cont, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        ch <- fmt.Sprintf("%v\n", err)
-        return
+        log.Println(board, thread, err)
+        return nil
     }
     json.Unmarshal(cont, &response)
+    return &response
+}
 
-    err = saveContent(thread, &response, ch)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "2chload: %v\n", err)
+func fetchFiles(board string, thread string) []string {
+    var files []string
+    response := getApiResponse(board, thread)
+    if response == nil {
+        return files
     }
+    for _, post := range response.Threads[0].Posts {
+        for _, file := range post.Files {
+            files = append(files, file.Path)
+        }
+    }
+    return files
+}
+
+func download(file string, ch chan<- string) {
+    start := time.Now()
+    url := baseUrl + file[1:]
+    meta := strings.Split(file[1:], "/")
+    board, thread, name := meta[0], meta[2], meta[3] // [1] for /src/
+
+    path := thread + "/" + pics
+    if strings.HasSuffix(name, ".webm") || strings.HasSuffix(name, ".mp4") {
+        path = thread + "/" + vids
+    }
+
+    _ = os.MkdirAll(path, bitmask) // ignoring
+    filename := path + "/" + name
+
+    resp, err := http.Get(url)
+    if err != nil {
+        ch <- fmt.Sprintf("%s/%s/%s: %v\n", board, thread, name, err)
+        return
+    }
+    defer resp.Body.Close()
+    cont, err := os.Create(filename)
+    if err != nil {
+        ch <- fmt.Sprintf("%s/%s/%s: %v\n", board, thread, name, err)
+        return
+    }
+    defer cont.Close()
+    size, err := io.Copy(cont, resp.Body)
+    secs := time.Since(start).Seconds()
+
+    ch <- fmt.Sprintf("%.2fs %10d %s/%s/%s\n", secs, size, board, thread, name)
+}
+
+func getUnits(args []string) []Unit {
+    var units []Unit
+    for _, arg := range args {
+        result := strings.Split(arg, "/")
+        if len(result) == 2 {
+            units = append(units, Unit{result[0], result[1]})
+        }
+    }
+    return units
 }
 
 func main() {
+    units := getUnits(os.Args[1:])
+    if len(units) == 0 {
+        fmt.Println(help)
+        os.Exit(2)
+    }
+    var files []string
+    for _, unit := range units {
+        log.Println(unit, "ищем файлы...")
+        local := fetchFiles(unit.board, unit.thread)
+        log.Println(unit, "найдено", len(local))
+        files = append(files, local...)
+    }
+    log.Println("всего будет скачано:", len(files))
     start := time.Now()
     ch := make(chan string)
-    for _, arg := range os.Args[1:] {
-        pair := strings.Split(arg, "/")
-        if len(pair) < 2 {
-            counter++
-            continue
-        }
-        go fetchContent(pair[0], pair[1], ch)
+    for _, file := range files {
+        go download(file, ch)
     }
-    for counter < int32(len(os.Args[1:])) {
-        fmt.Printf(<-ch)
+    for range files {
+        fmt.Print(<-ch)
     }
-    fmt.Printf("%.2fs finished.\n", time.Since(start).Seconds())
+    fmt.Printf("%.2fs завершено.\n", time.Since(start).Seconds())
 }
