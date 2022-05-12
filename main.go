@@ -176,13 +176,13 @@ func fetchContent(board, thread string, ch chan<- string) {
         ch <- fmt.Sprintf("Request to the 2ch's api has failed.\n")
         return
     }
-    respB, err := ioutil.ReadAll(resp.Body)
+    defer resp.Body.Close()
+    cont, err := ioutil.ReadAll(resp.Body)
     if err != nil {
         ch <- fmt.Sprintf("%v\n", err)
         return
     }
-    resp.Body.Close()
-    json.Unmarshal(respB, &response)
+    json.Unmarshal(cont, &response)
 
     err = saveContent(thread, &response, ch)
     if err != nil {

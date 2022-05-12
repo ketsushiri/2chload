@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+2chload
 
 # Test binary, built with `go test -c`
 *.test
