@@ -130,15 +130,6 @@ const (
     help    = "Usage: 2chload [board/thread]\n\te.g: 2chload b/23242553 pr/543323 math/235114"
 )
 
-func createDir(name, subdir string) (path string, err error) {
-    path = fmt.Sprintf("%s/%s", name, subdir)
-    err = os.MkdirAll(path, bitmask)
-    if err != nil {
-        return "", err
-    }
-    return path, nil
-}
-
 func getApiResponse(board string, thread string) *Api {
     var response Api
     url := baseUrl + board + "/res/" + thread + ".json"
