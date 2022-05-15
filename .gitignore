@@ -4,8 +4,15 @@
 *.dll
 *.so
 *.dylib
+
+# bin
 2chload
 main
+
+# vim
+*.swp
+
+release/*
 
 # Test binary, built with `go test -c`
 *.test

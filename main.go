@@ -21,101 +21,21 @@ func (u Unit) String() string {
 }
 
 type File struct {
-    Displayname string
-    Fullname    string
-    Height      int32
-    Md5         string
-    Name        string
-    Nsfw        int32
-    Path        string
-    Thumbnail   string
-    Tn_height   int32
-    Tn_width    int32
-    Type        int32
-    Width       int32
+    Name string
+    Path string
 }
 
 type Post struct {
-    Banned    int32
-    Closed    int32
-    Comment   string
-    Date      string
-    Email     string
-    Endless   int32
-    Files     []File
-    Lasthit   int64
-    Name      string
-    Num       int64
-    Number    int32
-    Op        int32
-    Parent    string
-    Sticky    int32
-    Subject   string
-    Timestamp int64
-    Trip      string
+    Files []File
 }
 
 type Thread struct {
     Posts []Post
 }
 
-type News struct {
-    Date    string
-    Num     int64
-    Subject string
-    Views   int64
-}
-
-type Meta struct {
-    Board string
-    Info  string
-    Name  string
-}
-
 type Api struct {
-    Board               string
-    BoardInfo           string
-    BoardInfoOuter      string
-    BoardName           string
-    Advert_bottom_image string
-    Advert_bottom_link  string
-    Advert_mobile_image string
-    Advert_mobile_link  string
-    Advert_top_image    string
-    Advert_top_link     string
-    Board_banner_image  string
-    Board_banner_link   string
-    Bump_limit          int32
-    Current_thread      string
-    Default_name        string
-    Enable_dices        int8
-    Enable_flags        int8
-    Enable_icons        int8
-    Enable_images       int8
-    Enable_likes        int8
-    Enable_names        int8
-    Enable_oekaki       int8
-    Enable_posting      int8
-    Enable_sage         int8
-    Enable_shield       int8
-    Enable_subject      int8
-    Enable_thread_tags  int8
-    Enable_trips        int8
-    Enable_video        int8
-    Files_count         int8
-    Is_board            int8
-    Is_closed           int8
-    Is_index            int8
-    Max_comment         int32
-    Max_files_size      int32
-    Max_num             int64
-    News_abu            []News
-    Posts_count         int32
-    Thread_first_image  string
-    Threads             []Thread
-    Tiltle              string
-    Top                 []Meta
-    Unique_posters      string
+    Board   string
+    Threads []Thread
 }
 
 const (
@@ -133,21 +53,24 @@ func getApiResponse(board string, thread string) *Api {
 
     resp, err := http.Get(url)
     if err != nil {
-        log.Println(board, thread, err)
+        log.Println(Unit{board, thread}, err)
         return nil
     }
     defer resp.Body.Close()
     cont, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        log.Println(board, thread, err)
+        log.Println(Unit{board, thread}, err)
         return nil
     }
     json.Unmarshal(cont, &response)
+    if len(response.Threads) == 0 {
+        log.Println(Unit{board, thread}, "не удалось получить тред.")
+        return nil
+    }
     return &response
 }
 
-func fetchFiles(board string, thread string) []string {
-    var files []string
+func fetchFiles(board string, thread string) (files []string) {
     response := getApiResponse(board, thread)
     if response == nil {
         return files
@@ -192,8 +115,7 @@ func download(file string, ch chan<- string) {
     ch <- fmt.Sprintf("%.2fs %10d %s/%s/%s\n", secs, size, board, thread, name)
 }
 
-func getUnits(args []string) []Unit {
-    var units []Unit
+func getUnits(args []string) (units []Unit) {
     for _, arg := range args {
         result := strings.Split(arg, "/")
         if len(result) == 2 {
