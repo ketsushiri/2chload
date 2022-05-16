@@ -13,7 +13,7 @@ $ 2chload b/268037208 math/29047 pr/1008826
 ```bash
 $ git clone https://github.com/ketsushiri/2chload.git
 $ cd 2chload
-$ go build -o 2chload main.go
+$ go build
 ```
 ## License
 MIT
