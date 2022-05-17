@@ -126,6 +126,7 @@ func getUnits(args []string) (units []Unit) {
 }
 
 func main() {
+	log.SetFlags(log.Ltime)
 	units := getUnits(os.Args[1:])
 	if len(units) == 0 {
 		fmt.Println(help)
