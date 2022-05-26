@@ -87,6 +87,10 @@ func download(file string, ch chan<- string) {
 	start := time.Now()
 	url := baseUrl + file[1:]
 	meta := strings.Split(file[1:], "/")
+	if meta[0] == "stickers" {
+		ch <- fmt.Sprintf("%.2fs %10d найден стикер, игнорирую...\n", time.Since(start).Seconds(), 0)
+		return
+	}
 	board, thread, name := meta[0], meta[2], meta[3] // [1] for /src/
 
 	path := thread + "/" + pics
